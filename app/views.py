@@ -178,9 +178,12 @@ def myCalculators(request, id):
     result_dict = {'email': email, 'loaned': loaned}
     
     if request.POST:
+        if request.POST['action'] == 'delete':
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM calculators cal WHERE cal.serial_number = %s AND cal.brand = %s", [request.POST['serial_number'], request.POST['brand']])
         if request.POST['action'] == 'return':
             with connection.cursor() as cursor:
-                cursor.execute("UPDATE calculators SET availability = 'available' WHERE serial_number = %s AND brand = %s", [request.POST['serial_number'], request.POST['brand']])
+                cursor.execute("UPDATE calculators SET availability = 'not available' WHERE serial_number = %s AND brand = %s", [request.POST['serial_number'], request.POST['brand']])
                 cursor.execute("DELETE FROM loan l WHERE l.borrower_email = %s AND serial_number = %s", [id, request.POST['serial_number']])
                 cursor.execute("SELECT * FROM calculators cal WHERE cal.email = %s", [id])
                 calculator = cursor.fetchall()
@@ -706,26 +709,20 @@ def findCalculators_all(request):
 #    return render(request, "app/settings.html", result_dict)
 
 def settings(request):
-      
+    context ={}
     with connection.cursor() as cursor:
         if request.session.has_key('username'):
             username = request.session['username']
         cursor.execute("SELECT s.email, s.first_name, s.last_name, s.time_availability, s.location_id FROM students s WHERE s.email = %s", [username])
         obj = cursor.fetchone()
-        #cursor.execute("SELECT s.email FROM students s WHERE s.email = %s", [username])
-        #email = cursor.fetchone()
-
-    #result_dict = {'email':email}
-    
-    context ={}
-    context["obj"] = obj
-    
     if request.POST:
         if request.POST['action'] == 'Update':
             with connection.cursor() as cursor:
                 cursor.execute("UPDATE students SET first_name = %s, last_name = %s, time_availability = %s, location_id = %s WHERE email = %s", [request.POST['first_name'], request.POST['last_name'],request.POST['time_availability'] , request.POST['location_id'], username])
-    
-    return render(request, "app/settings.html", context) #, result_dict)
+                cursor.execute("SELECT s.email, s.first_name, s.last_name, s.time_availability, s.location_id FROM students s WHERE s.email = %s", [username])
+                obj = cursor.fetchone()
+    context["obj"] = obj
+    return render(request, "app/settings.html", context)
 
 
 def logout(request):
